@@ -11,6 +11,9 @@
 KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE,    "pintool",
     "o", "pin_mem_trace.out", "specify trace file name");
 
+KNOB<BOOL> KnobTrackStack(KNOB_MODE_WRITEONCE,   "pintool",
+                          "ts", "0", "track stack");
+
 #define PAGEINDEX(x) (~0x0 << 5) & (x)
 //FILE * trace;
 PIN_MUTEX lock;
@@ -32,20 +35,6 @@ std::ostream *getOfstream(THREADID tid)
     out = gzout_map[tid];
     return out;
 }
-
-// ADDRINT getLastPage(THREADID tid)
-// {
-//     if (lastpages.find(tid) == lastpages.end()) {
-//         lastpages[tid] = 0;
-//     }
-//     return lastpages[tid];
-// }
-
-// void setLastPage(THREADID tid, ADDRINT addr)
-// {
-//     lastpages[tid] = addr;
-// }
-
 
 VOID RecordMemOps(VOID *ip, VOID * addr, THREADID tid) 
 {
@@ -99,6 +88,12 @@ VOID Instruction(INS ins, VOID *v)
     // The IA-64 architecture has explicitly predicated instructions. 
     // On the IA-32 and Intel(R) 64 architectures conditional moves and REP 
     // prefixed instructions appear as predicated instructions in Pin.
+
+    if ((INS_IsStackRead(ins) || INS_IsStackWrite(ins)) && !KnobTrackStack)
+    {
+        return;
+    }
+    
     UINT32 memOperands = INS_MemoryOperandCount(ins);
 
     // Iterate over each memory operand of the instruction.
