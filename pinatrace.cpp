@@ -1,10 +1,11 @@
-#include <gzstream.h>
+#include "gzstream.h"
 #include <cstdio>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <map>
 #include "pin.H"
+#include <string>
 /**
  * 直接输出程序的所有访存地址
  * **/
@@ -18,6 +19,7 @@ KNOB<BOOL> KnobTrackStack(KNOB_MODE_WRITEONCE,   "pintool",
 //FILE * trace;
 PIN_MUTEX lock;
 //ADDRINT lastPage;
+std::string filename;
 
 std::map<THREADID, ogzstream *>gzout_map;
 // std::map<THREADID, ADDRINT> lastpages;
@@ -29,21 +31,41 @@ std::ostream *getOfstream(THREADID tid)
     if (gzout_map.find(tid) == gzout_map.end()) 
     {
         char name[128];
-        sprintf(name,"thread%d-trace.out.gz",tid);
+        sprintf(name,"%s-%d.gz",filename.c_str(), tid);
         gzout_map[tid] = new ogzstream(name);
     }
     out = gzout_map[tid];
     return out;
 }
 
-VOID RecordMemOps(VOID *ip, VOID * addr, THREADID tid) 
+VOID RecordRMemOps(VOID *ip, VOID * addr, THREADID tid)
+{
+    RecordRMemOps(ip, addr, tid, 0);
+}
+
+VOID RecordWMemOps(VOID *ip, VOID * addr, THREADID tid)
+{
+    RecordMemOps(ip, addr, tid, 1);
+}
+
+// r:0,w:1
+VOID RecordMemOps(VOID *ip, VOID * addr, THREADID tid, int rw) 
 {
     PIN_MutexLock(&lock);
     std::ostream *out = getOfstream(tid);
-    // ADDRINT lastPage = getLastPage(tid);
-	ADDRINT curPage = PAGEINDEX((ADDRINT)addr);
-    
-    *out << hex << curPage << " : " << ip << endl;
+    //ADDRINT curPage = PAGEINDEX((ADDRINT)addr);
+    ADDRINT curPage = (ADDRINT)addr;
+    INT32 col, line;
+	std::string filename = "unknown";
+	PIN_LockClient();
+	PIN_GetSourceLocation((ADDRINT)ip, &col, &line, &filename);
+	PIN_UnlockClient();
+    *out << std::hex << curPage << " : " << ip 
+        << (rw == 0? "R": "W")
+        << std::dec << " : " 
+        << col << " : " 
+        << line << " : " << (filename == "" ? "unknown" : filename)
+        << std::endl;
     PIN_MutexUnlock(&lock);
 }
 
@@ -102,7 +124,7 @@ VOID Instruction(INS ins, VOID *v)
         if (INS_MemoryOperandIsRead(ins, memOp))
         {
             INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemOps,
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordRMemOps,
                 IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_THREAD_ID,
@@ -114,7 +136,7 @@ VOID Instruction(INS ins, VOID *v)
         if (INS_MemoryOperandIsWritten(ins, memOp))
         {
             INS_InsertPredicatedCall(
-                ins, IPOINT_BEFORE, (AFUNPTR)RecordMemOps,
+                ins, IPOINT_BEFORE, (AFUNPTR)RecordWMemOps,
                 IARG_INST_PTR,
                 IARG_MEMORYOP_EA, memOp,
                 IARG_THREAD_ID,
@@ -155,13 +177,15 @@ INT32 Usage()
 int main(int argc, char *argv[])
 {
     if (PIN_Init(argc, argv)) return Usage();
+    filename = KnobOutputFile.Value();
+    
     PIN_MutexInit(&lock);
     //lastpages = new std::map<THREADID, ADDRINT>();
     gzout_map = std::map<THREADID, ogzstream *>();
     //out_map = new std::map<THREADID, std::ofstream *>();
                              
     //trace = fopen(KnobOutputFile.Value().c_str(), "w");
-
+	PIN_InitSymbols();
     INS_AddInstrumentFunction(Instruction, 0);
     PIN_AddFiniFunction(Fini, 0);
 

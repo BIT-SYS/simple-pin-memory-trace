@@ -46,6 +46,8 @@ endif
 ifeq ($(TARGET_COMPILER),gnu)
     include ../makefile.gnu.config
     CXXFLAGS ?= -Wall -Werror -Wno-unknown-pragmas $(DBG) $(OPT)
+	#PIN_LDFLAGS := -L.
+	#PIN_LIBS := -lgzstream -lz
 endif
 
 ifeq ($(TARGET_COMPILER),ms)
@@ -83,7 +85,7 @@ else
         TOOL_ROOTS += pinatrace itrace
     endif
     THREADTEST = thread_win.exe
-    LITTLEMALLOC = little_malloc.exe
+    #LITTLEMALLOC = little_malloc.exe
     APPS += $(THREADTEST) $(LITTLEMALLOC) 
 endif
 
@@ -100,7 +102,7 @@ ifneq ($(TARGET),ipf)
 endif
     STATIC_TOOL_ROOTS += statica
     THREADTEST = thread_lin
-    LITTLEMALLOC = little_malloc
+    #LITTLEMALLOC = little_malloc
     APPS += $(THREADTEST) $(LITTLEMALLOC) fork_app
 endif
 
@@ -253,7 +255,7 @@ $(OBJDIR)%.o : %.cpp $(OBJDIR)make-directory
 $(TOOLS): $(PIN_LIBNAMES)
 
 $(TOOLS): %$(PINTOOL_SUFFIX) : %.o
-	${PIN_LD} $(PIN_LDFLAGS) $(LINK_DEBUG) ${LINK_OUT}$@ $< ${PIN_LPATHS} $(PIN_LIBS) -lgzstream -lz $(DBG)
+	${PIN_LD} $(PIN_LDFLAGS) $(LINK_DEBUG) ${LINK_OUT}$@ $< ${PIN_LPATHS} $(PIN_LIBS) -L. -lgzstream -lz $(DBG)
 
 $(STATIC_TOOLS): $(PIN_LIBNAMES)
 
