@@ -28,4 +28,4 @@ output：编译成功后生成的pinatrace.so的目录，其中64位系统时目
 foo：目标程序，其中也作为生成trace的trace文件前缀，这样生成的trace为`foo-1.gz`，`foo-2.gz`...，其中`1`，`2`为线程区分标识
 `/path/to/foo -para1 -para2` 为调用foo程序时的完整路径和参数
 
-$pindir/pin -injection child -t $pindir/source/tools/ManualExamples/$output/pinatrace.so -o foo -- /path/to/foo -para1 -para2 
+`$pindir/pin -injection child -t $pindir/source/tools/ManualExamples/$output/pinatrace.so -o foo -- /path/to/foo -para1 -para2 `
