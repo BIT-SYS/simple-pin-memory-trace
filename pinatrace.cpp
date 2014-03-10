@@ -38,9 +38,30 @@ std::ostream *getOfstream(THREADID tid)
     return out;
 }
 
+VOID RecordMemOps(VOID *ip, VOID * addr, THREADID tid, int rw) 
+{
+    PIN_MutexLock(&lock);
+    std::ostream *out = getOfstream(tid);
+    //ADDRINT curPage = PAGEINDEX((ADDRINT)addr);
+    ADDRINT curPage = (ADDRINT)addr;
+    INT32 col, line;
+    std::string filename = "unknown";
+    PIN_LockClient();
+    PIN_GetSourceLocation((ADDRINT)ip, &col, &line, &filename);
+    PIN_UnlockClient();
+    *out << std::hex << curPage 
+        << " : " << ip 
+        << " : " << (rw == 0? "R": "W")
+        << " : " << std::dec << col
+        << " : " <<line 
+        << " : " << (filename == "" ? "unknown" : filename)
+        << std::endl;
+    PIN_MutexUnlock(&lock);
+}
+
 VOID RecordRMemOps(VOID *ip, VOID * addr, THREADID tid)
 {
-    RecordRMemOps(ip, addr, tid, 0);
+    RecordMemOps(ip, addr, tid, 0);
 }
 
 VOID RecordWMemOps(VOID *ip, VOID * addr, THREADID tid)
@@ -49,25 +70,7 @@ VOID RecordWMemOps(VOID *ip, VOID * addr, THREADID tid)
 }
 
 // r:0,w:1
-VOID RecordMemOps(VOID *ip, VOID * addr, THREADID tid, int rw) 
-{
-    PIN_MutexLock(&lock);
-    std::ostream *out = getOfstream(tid);
-    //ADDRINT curPage = PAGEINDEX((ADDRINT)addr);
-    ADDRINT curPage = (ADDRINT)addr;
-    INT32 col, line;
-	std::string filename = "unknown";
-	PIN_LockClient();
-	PIN_GetSourceLocation((ADDRINT)ip, &col, &line, &filename);
-	PIN_UnlockClient();
-    *out << std::hex << curPage << " : " << ip 
-        << (rw == 0? "R": "W")
-        << std::dec << " : " 
-        << col << " : " 
-        << line << " : " << (filename == "" ? "unknown" : filename)
-        << std::endl;
-    PIN_MutexUnlock(&lock);
-}
+
 
 // Print a memory read record
 // VOID RecordMemRead(VOID * ip, VOID * addr)
