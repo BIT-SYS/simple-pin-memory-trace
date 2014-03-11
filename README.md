@@ -21,6 +21,10 @@ $(TOOLS): %$(PINTOOL_SUFFIX) : %.o
 
 + 之后编译整个目录（在`source/tools/ManualExamples/`下执行`make`）
 
+### gzstream
+
+在gzstream子目录中可以编译得到本地系统对应的gzstream库，使用`make`即可。
+
 ## How to use
 
 pindir：pin目录
